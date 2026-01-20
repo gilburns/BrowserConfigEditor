@@ -6,16 +6,26 @@
 //
 
 import Cocoa
+import Sparkle
+import SwiftUI
 
 @main
 class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
 
 
+    let updaterController: SPUStandardUpdaterController
+    var checkForUpdatesMenuItem: NSMenuItem!
+    var settingsMenuItem: NSMenuItem!
+    var settingsWindowController: NSWindowController?
 
+    override init() {
+        updaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
+    }
 
     func applicationDidFinishLaunching(_ aNotification: Notification) {
         // Insert code here to initialize your application
         setupMenu()
+
     }
 
     private func setupMenu() {
@@ -28,6 +38,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
         appMenuItem.submenu = appMenu
 
         appMenu.addItem(NSMenuItem(title: "About BrowserConfigEditor", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: ""))
+        appMenu.addItem(NSMenuItem.separator())
+
+        // Settings window
+        settingsMenuItem = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
+        appMenu.addItem(settingsMenuItem)
+
+        checkForUpdatesMenuItem = NSMenuItem(title: "Check for Updates…", action: #selector(SPUStandardUpdaterController.checkForUpdates(_:)), keyEquivalent: "")
+        checkForUpdatesMenuItem.target = updaterController
+        appMenu.addItem(checkForUpdatesMenuItem)
+
         appMenu.addItem(NSMenuItem.separator())
         appMenu.addItem(NSMenuItem(title: "Hide BrowserConfigEditor", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h"))
         let hideOthersItem = NSMenuItem(title: "Hide Others", action: #selector(NSApplication.hideOtherApplications(_:)), keyEquivalent: "h")
@@ -180,6 +200,37 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
             NSWorkspace.shared.open(url)
         }
     }
+    
+    @objc func openSettings() {
+        // If settings window already exists, just bring it to front
+        if let existingWindow = settingsWindowController?.window {
+            existingWindow.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
+        // Create the SwiftUI view with the updater
+        let settingsView = UpdaterSettingsView(updater: updaterController.updater)
+
+        // Wrap it in an NSHostingController
+        let hostingController = NSHostingController(rootView: settingsView)
+
+        // Create the window
+        let window = NSWindow(contentViewController: hostingController)
+        window.title = "Settings"
+        window.styleMask = [.titled, .closable]
+        window.setContentSize(NSSize(width: 400, height: 150))
+        window.center()
+
+        // Create window controller
+        let windowController = NSWindowController(window: window)
+        settingsWindowController = windowController
+
+        // Show the window
+        windowController.showWindow(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+    
 
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
         // Get the main window's content view controller
@@ -200,6 +251,30 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
 
     func applicationWillTerminate(_ aNotification: Notification) {
         // Insert code here to tear down your application
+    }
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        // Check if there are unsaved configured policies
+        guard let window = NSApp.mainWindow,
+              let viewController = window.contentViewController as? ViewController else {
+            return .terminateNow
+        }
+
+        // If no configured policies, quit immediately
+        if viewController.configurationModel.configuredPolicies.isEmpty {
+            return .terminateNow
+        }
+
+        // Show warning dialog
+        let alert = NSAlert()
+        alert.messageText = "Quit BrowserConfigEditor?"
+        alert.informativeText = "You have \(viewController.configurationModel.configuredPolicies.count) configured policy(ies) that may not have been exported.\n\nAre you sure you want to quit?"
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Quit")
+        alert.addButton(withTitle: "Cancel")
+
+        let response = alert.runModal()
+        return response == .alertFirstButtonReturn ? .terminateNow : .terminateCancel
     }
 
     func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {
