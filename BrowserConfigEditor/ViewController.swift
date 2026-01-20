@@ -140,10 +140,17 @@ class ViewController: NSViewController {
 
         // Setup right panel (configured policies)
         setupConfiguredPanel()
+        
+        // Set Window name
+        if let window = view.window {
+            window.title = "BrowserConfigEditor"
+            window.isMovableByWindowBackground = true
+        }
     }
 
     private func setupPoliciesPanel() {
         let containerView = NSView()
+        containerView.translatesAutoresizingMaskIntoConstraints = false
 
         let label = NSTextField()
         label.isEditable = false
@@ -213,6 +220,7 @@ class ViewController: NSViewController {
 
     private func setupConfiguredPanel() {
         let containerView = NSView()
+        containerView.translatesAutoresizingMaskIntoConstraints = false
 
         let label = NSTextField()
         label.isEditable = false
@@ -348,6 +356,9 @@ class ViewController: NSViewController {
         super.viewDidAppear()
         // Set initial divider position after view has been laid out
         splitView.setPosition(800, ofDividerAt: 0)
+
+        // Set self as window delegate for close confirmation
+        view.window?.delegate = self
     }
 
     // MARK: - Actions
@@ -386,7 +397,7 @@ class ViewController: NSViewController {
         // Create alert with popup of browsers
         let alert = NSAlert()
         alert.messageText = "Select Browser"
-        alert.informativeText = "Choose one of the detected web browsers or browse for another application."
+        alert.informativeText = "Choose one of the detected web browsers below, or browse for another application."
         alert.alertStyle = .informational
 
         // Create popup button with browsers
@@ -498,12 +509,13 @@ class ViewController: NSViewController {
             }
 
             // Get the app name from the URL
-            let appName = url.lastPathComponent
+            let appName = url.lastPathComponent.replacingOccurrences(of: ".app", with: "")
 
             // Get the app icon
             let standardizedURL = url.standardizedFileURL
             browserIconView.image = NSWorkspace.shared.icon(forFile: standardizedURL.path)
             browserIconView.isHidden = false
+            
             // UI hint
             browserIconView.toolTip = standardizedURL.path
             browserIconView.target = self
@@ -520,6 +532,14 @@ class ViewController: NSViewController {
             updateButtonStates()
 
             policiesTableView.reloadData()
+            
+            // Set Window name and url
+            if let window = view.window {
+                window.representedURL = url
+                window.title = "\(appName)  –  BrowserConfigEditor"
+                window.isMovableByWindowBackground = true
+            }
+            
         } catch {
             showError("Failed to load browser manifest", message: error.localizedDescription)
         }
@@ -774,22 +794,59 @@ class ViewController: NSViewController {
     }
 
     private func importFromFile(url: URL) {
+        // Check if there are existing configured policies
+        let hasExistingPolicies = !configurationModel.configuredPolicies.isEmpty
+
+        if hasExistingPolicies {
+            // Show dialog asking whether to clear or merge
+            let alert = NSAlert()
+            alert.messageText = "Import Options"
+            alert.informativeText = "You have \(configurationModel.configuredPolicies.count) configured policy(ies). How would you like to import the new configuration?"
+            alert.alertStyle = .informational
+
+            alert.addButton(withTitle: "Replace All")
+            alert.buttons.last?.toolTip = "Remove all existing policies and import new ones"
+
+            alert.addButton(withTitle: "Merge")
+            alert.buttons.last?.toolTip = "Keep existing policies and add/update with imported ones"
+
+            alert.addButton(withTitle: "Cancel")
+
+            let response = alert.runModal()
+
+            switch response {
+            case .alertFirstButtonReturn: // Replace All
+                performImport(url: url, clearExisting: true)
+            case .alertSecondButtonReturn: // Merge
+                performImport(url: url, clearExisting: false)
+            default: // Cancel
+                return
+            }
+        } else {
+            // No existing policies, just import
+            performImport(url: url, clearExisting: true)
+        }
+    }
+
+    private func performImport(url: URL, clearExisting: Bool) {
         do {
             // Detect file type by extension
             let fileExtension = url.pathExtension.lowercased()
 
             switch fileExtension {
             case "json":
-                try configurationModel.importFromJSON(url: url)
+                try configurationModel.importFromJSON(url: url, clearExisting: clearExisting)
             case "plist":
-                try configurationModel.importFromPlist(url: url)
+                try configurationModel.importFromPlist(url: url, clearExisting: clearExisting)
             default:
                 throw NSError(domain: "ViewController", code: 1, userInfo: [NSLocalizedDescriptionKey: "Unsupported file type. Please select a .plist or .json file."])
             }
 
             configuredTableView.reloadData()
             updateButtonStates()
-            showSuccess("Configuration imported successfully")
+
+            let action = clearExisting ? "imported" : "merged"
+            showSuccess("Configuration \(action) successfully")
         } catch {
             showError("Import Failed", message: error.localizedDescription)
         }
@@ -797,8 +854,6 @@ class ViewController: NSViewController {
 
     private func showValueEditor(for policy: PolicyModel) {
         let alert = NSAlert()
-//        alert.messageText = "\(policy.name)"
-//        alert.informativeText = "Policy Description:\n\(policy.title)" != nil ? "Policy Description:\n\(unescapeString(policy.title!))" : ""
         alert.messageText = "Policy Key:"
         alert.informativeText = "\(policy.name)"
         alert.alertStyle = .informational
@@ -1109,7 +1164,7 @@ class ViewController: NSViewController {
                     popup.addItem(withTitle: "\(value)")
                 }
                 // Select current value if it exists
-                if let currentValue = configurationModel.value(for: policy.name) as? Int {
+                if let currentValue = configurationModel.value(for: policy.name) as? String {
                     popup.selectItem(withTitle: "\(currentValue)")
                 }
                 return popup
@@ -1226,7 +1281,9 @@ class ViewController: NSViewController {
             }
 
         case .string:
-            if let textField = view as? NSTextField {
+            if let popup = view as? NSPopUpButton {
+                return String(popup.titleOfSelectedItem ?? "")
+            } else if let textField = view as? NSTextField {
                 return textField.stringValue
             }
 
