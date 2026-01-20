@@ -224,7 +224,7 @@ class ConfigurationModel: ObservableObject {
 
     // MARK: - Import functions
     // Import from existing plist
-    func importFromPlist(url: URL) throws {
+    func importFromPlist(url: URL, clearExisting: Bool = true) throws {
         let data = try Data(contentsOf: url)
         guard let plistDict = try PropertyListSerialization.propertyList(
             from: data,
@@ -234,26 +234,30 @@ class ConfigurationModel: ObservableObject {
             throw NSError(domain: "ConfigurationModel", code: 1, userInfo: [NSLocalizedDescriptionKey: "Invalid plist format"])
         }
 
-        // Clear existing configuration
-        configuredPolicies.removeAll()
+        // Optionally clear existing configuration
+        if clearExisting {
+            configuredPolicies.removeAll()
+        }
 
-        // Import values
+        // Import values (will overwrite existing keys with same name)
         for (key, value) in plistDict {
             setPolicy(name: key, value: value)
         }
     }
 
     // Import from JSON file
-    func importFromJSON(url: URL) throws {
+    func importFromJSON(url: URL, clearExisting: Bool = true) throws {
         let data = try Data(contentsOf: url)
         guard let jsonDict = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] else {
             throw NSError(domain: "ConfigurationModel", code: 2, userInfo: [NSLocalizedDescriptionKey: "Invalid JSON format"])
         }
 
-        // Clear existing configuration
-        configuredPolicies.removeAll()
+        // Optionally clear existing configuration
+        if clearExisting {
+            configuredPolicies.removeAll()
+        }
 
-        // Import values
+        // Import values (will overwrite existing keys with same name)
         for (key, value) in jsonDict {
             setPolicy(name: key, value: value)
         }
