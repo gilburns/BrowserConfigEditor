@@ -522,7 +522,11 @@ class ViewController: NSViewController {
             browserIconView.action = #selector(revealBrowserInFinder)
             
             // Update label with app name and domain
-            browserLabel.stringValue = "\(appName) - \(manifest.domain)"
+            var currentDomain = manifest.domain
+            if currentDomain.contains("com.microsoft.edgemac") {
+                currentDomain = "com.microsoft.Edge"
+            }
+            browserLabel.stringValue = "\(appName) - \(currentDomain)"
             browserLabel.toolTip = standardizedURL.path
 
             // Update policy count
@@ -700,7 +704,12 @@ class ViewController: NSViewController {
                 allowedTypes.append(shellType)
             }
             savePanel.allowedContentTypes = allowedTypes
-            savePanel.nameFieldStringValue = "\(self.currentManifest?.domain ?? "browser").plist"
+            var currentDomain = self.currentManifest?.domain ?? "browser"
+            if currentDomain.contains("com.microsoft.edgemac") {
+                currentDomain = "com.microsoft.Edge"
+            }
+
+            savePanel.nameFieldStringValue = "\(currentDomain).plist"
 
             // Set up format change handler using a custom class to maintain reference to save panel
             let handler = FormatPopupHandler(savePanel: savePanel, popup: formatPopup, defaultName: self.currentManifest?.domain ?? "browser")
@@ -859,7 +868,7 @@ class ViewController: NSViewController {
         alert.alertStyle = .informational
 
         // Create container for accessory view with description and input
-        let containerView = NSView(frame: NSRect(x: 0, y: 0, width: 440, height: 0))
+        let containerView = NSView(frame: NSRect(x: 0, y: 0, width: 550, height: 0))
         var components: [(view: NSView, height: CGFloat)] = []
 
         // Policy documentation hyperlink
@@ -914,7 +923,7 @@ class ViewController: NSViewController {
             // Unescape the description string
             let unescapedDescription = unescapeString(description)
 
-            let descriptionText = NSTextView(frame: NSRect(x: 0, y: 0, width: 440, height: 100))
+            let descriptionText = NSTextView(frame: NSRect(x: 0, y: 0, width: 550, height: 100))
             descriptionText.isEditable = false
             descriptionText.isSelectable = true
             descriptionText.drawsBackground = false
@@ -932,7 +941,7 @@ class ViewController: NSViewController {
                                                        value: paragraphStyle,
                                                        range: NSRange(location: 0, length: descriptionText.string.count))
 
-            let scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: 440, height: 100))
+            let scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: 550, height: 100))
             scrollView.documentView = descriptionText
             scrollView.hasVerticalScroller = true
             scrollView.borderType = .bezelBorder
@@ -944,7 +953,7 @@ class ViewController: NSViewController {
         }
 
         let spacer = NSView()
-        components.append((spacer, 20))
+        components.append((spacer, 10))
 
         // Add value input field first (will be at bottom)
         let inputField = createInputField(for: policy)
@@ -967,11 +976,11 @@ class ViewController: NSViewController {
         inputTitleString.cell?.isScrollable = false
         inputTitleString.textColor = NSColor.controlTextColor
 
-        // Calculate the height needed for the wrapped text (width will be set to 440 during layout)
+        // Calculate the height needed for the wrapped text (width will be set to 550 during layout)
         let titleText = inputTitleString.stringValue as NSString
         let titleAttributes: [NSAttributedString.Key: Any] = [.font: inputTitleString.font as Any]
         let titleRect = titleText.boundingRect(
-            with: NSSize(width: 440, height: CGFloat.greatestFiniteMagnitude),
+            with: NSSize(width: 550, height: CGFloat.greatestFiniteMagnitude),
             options: [.usesLineFragmentOrigin, .usesFontLeading],
             attributes: titleAttributes
         )
@@ -991,7 +1000,7 @@ class ViewController: NSViewController {
             var frame = view.frame
             frame.origin.x = 0
             frame.origin.y = yOffset
-            frame.size.width = 440
+            frame.size.width = 550
             frame.size.height = height
             view.frame = frame
             containerView.addSubview(view)
@@ -999,7 +1008,7 @@ class ViewController: NSViewController {
         }
 
         // Update container height
-        containerView.frame.size.height = yOffset + 10
+        containerView.frame.size.height = yOffset + 0
 
         alert.accessoryView = containerView
         alert.addButton(withTitle: "OK")
@@ -1133,7 +1142,7 @@ class ViewController: NSViewController {
 
         case .integer:
             if let rangeList = policy.rangeList, !rangeList.isEmpty {
-                let popup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 440, height: 26))
+                let popup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 550, height: 26))
                 for value in rangeList {
                     popup.addItem(withTitle: "\(value)")
                 }
@@ -1143,7 +1152,7 @@ class ViewController: NSViewController {
                 }
                 return popup
             } else {
-                let textField = NSTextField(frame: NSRect(x: 0, y: 0, width: 440, height: 24))
+                let textField = NSTextField(frame: NSRect(x: 0, y: 0, width: 550, height: 24))
                 textField.isEditable = true
                 textField.isSelectable = true
                 textField.isBordered = true
@@ -1159,7 +1168,7 @@ class ViewController: NSViewController {
 
         case .string:
             if let rangeList = policy.rangeList, !rangeList.isEmpty {
-                let popup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 440, height: 26))
+                let popup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 550, height: 26))
                 for value in rangeList {
                     popup.addItem(withTitle: "\(value)")
                 }
@@ -1169,7 +1178,7 @@ class ViewController: NSViewController {
                 }
                 return popup
             } else {
-                let textField = NSTextField(frame: NSRect(x: 0, y: 0, width: 440, height: 24))
+                let textField = NSTextField(frame: NSRect(x: 0, y: 0, width: 550, height: 24))
                 textField.isEditable = true
                 textField.isSelectable = true
                 textField.isBordered = true
@@ -1198,7 +1207,7 @@ class ViewController: NSViewController {
 
             let currentValue = configurationModel.value(for: policy.name) as? [Any]
             let arrayEditor = ArrayEditorView(
-                frame: NSRect(x: 0, y: 0, width: 440, height: 155),
+                frame: NSRect(x: 0, y: 0, width: 550, height: 155),
                 itemType: itemType,
                 rangeList: itemRangeList,
                 initialValue: currentValue
@@ -1210,17 +1219,17 @@ class ViewController: NSViewController {
             let structureType = DictionaryPolicyInfo.structureType(for: policy.name)
 
             // Create container view with label and editor
-            let containerView = NSView(frame: NSRect(x: 0, y: 0, width: 440, height: 140))
+            let containerView = NSView(frame: NSRect(x: 0, y: 0, width: 550, height: 160))
 
             // Add hint label
             let hintLabel = NSTextField(labelWithString: structureType.hint)
             hintLabel.font = NSFont.systemFont(ofSize: 10)
             hintLabel.textColor = .secondaryLabelColor
-            hintLabel.frame = NSRect(x: 0, y: 120, width: 440, height: 16)
+            hintLabel.frame = NSRect(x: 0, y: 140, width: 550, height: 16)
             containerView.addSubview(hintLabel)
 
             // Create text editor
-            let textView = NSTextView(frame: NSRect(x: 0, y: 0, width: 440, height: 100))
+            let textView = NSTextView(frame: NSRect(x: 0, y: 0, width: 550, height: 100))
             textView.isRichText = false
             textView.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
             textView.isEditable = true
@@ -1243,7 +1252,7 @@ class ViewController: NSViewController {
                 textView.string = structureType.template
             }
 
-            let scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: 440, height: 100))
+            let scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: 550, height: 135))
             scrollView.documentView = textView
             scrollView.hasVerticalScroller = true
             scrollView.borderType = .bezelBorder
@@ -1252,7 +1261,7 @@ class ViewController: NSViewController {
             return containerView
 
         default:
-            let textField = NSTextField(frame: NSRect(x: 0, y: 0, width: 440, height: 24))
+            let textField = NSTextField(frame: NSRect(x: 0, y: 0, width: 550, height: 24))
             textField.isEditable = true
             textField.isSelectable = true
             textField.isBordered = true

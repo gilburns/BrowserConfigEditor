@@ -47,13 +47,13 @@ class ArrayEditorView: NSView, NSTableViewDataSource, NSTableViewDelegate {
         scrollView.documentView = tableView
         scrollView.hasVerticalScroller = true
         scrollView.borderType = .bezelBorder
-        scrollView.frame = NSRect(x: 0, y: 30, width: 440, height: 120)
+        scrollView.frame = NSRect(x: 0, y: 30, width: 550, height: 120)
         addSubview(scrollView)
 
         // Add button
         addButton.title = "+"
         addButton.bezelStyle = .rounded
-        addButton.frame = NSRect(x: -5, y: 0, width: 28, height: 25)
+        addButton.frame = NSRect(x: 0, y: 0, width: 28, height: 25)
         addButton.target = self
         addButton.action = #selector(addItem)
         addSubview(addButton)
@@ -61,7 +61,7 @@ class ArrayEditorView: NSView, NSTableViewDataSource, NSTableViewDelegate {
         // Remove button
         removeButton.title = "-"
         removeButton.bezelStyle = .rounded
-        removeButton.frame = NSRect(x: 25, y: 0, width: 28, height: 25)
+        removeButton.frame = NSRect(x: 30, y: 0, width: 28, height: 25)
         removeButton.target = self
         removeButton.action = #selector(removeItem)
         addSubview(removeButton)
