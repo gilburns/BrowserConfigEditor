@@ -15,18 +15,22 @@ import Sparkle
 
 struct UpdaterSettingsView: View {
     private let updater: SPUUpdater
-    
+
     @State private var automaticallyChecksForUpdates: Bool
     @State private var automaticallyDownloadsUpdates: Bool
-    
+    @State private var scheduledCheckInterval: Int = 86_400
+
     init(updater: SPUUpdater) {
         self.updater = updater
-        self.automaticallyChecksForUpdates = updater.automaticallyChecksForUpdates
-        self.automaticallyDownloadsUpdates = updater.automaticallyDownloadsUpdates
+        _automaticallyChecksForUpdates = State(initialValue: updater.automaticallyChecksForUpdates)
+        _automaticallyDownloadsUpdates = State(initialValue: updater.automaticallyDownloadsUpdates)
+        _scheduledCheckInterval = State(initialValue: UserDefaults.standard.integer(forKey: "SUScheduledCheckInterval"))
     }
-    
+
     var body: some View {
-        VStack {
+        VStack(alignment: .leading, spacing: 16) {
+            Label("Update Checks:", systemImage: "arrow.2.circlepath.circle")
+                .font(.headline)
             Toggle("Automatically check for updates", isOn: $automaticallyChecksForUpdates)
                 .onChange(of: automaticallyChecksForUpdates) {
                     updater.automaticallyChecksForUpdates = automaticallyChecksForUpdates
@@ -37,6 +41,31 @@ struct UpdaterSettingsView: View {
                 .onChange(of: automaticallyDownloadsUpdates) {
                     updater.automaticallyDownloadsUpdates = automaticallyDownloadsUpdates
                 }
-        }.padding()
+
+            Picker("Check Interval", selection: $scheduledCheckInterval) {
+                Text("Once a day").tag(86_400)
+                Text("Once a week").tag(86_400 * 7)
+                Text("Once a fortnight").tag(86_400 * 14)
+                Text("Once a month").tag(86_400 * 30)
+            }
+            .disabled(!automaticallyChecksForUpdates)
+            // Observe the value, not the binding, so it meets Equatable
+            .onChange(of: scheduledCheckInterval) { oldInterval, newInterval in
+                UserDefaults.standard.set(newInterval, forKey: "SUScheduledCheckInterval")
+            }
+
+            HStack {
+                Spacer()
+                Button("Check now…") {
+                    checkForUpdates()
+                }
+            }
+        }
+        .padding()
+    }
+
+    private func checkForUpdates() {
+        updater.checkForUpdates()
     }
 }
+
